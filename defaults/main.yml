@@ -1,0 +1,21 @@
+---
+vector_version: "0.33.0"
+
+vector_download_deb: "https://packages.timber.io/vector/{{ vector_version }}/vector_{{ vector_version }}-1_amd64.deb"
+vector_download_rpm: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.x86_64.rpm"
+
+vector_config_path: /etc/vector/vector.toml
+vector_service_name: vector
+
+vector_manage_service: true
+
+vector_pkg_type: "{{ 'deb' if (ansible_facts.os_family | default('')) == 'Debian' else 'rpm' }}"
+
+vector_packages_debian:
+  - ca-certificates
+  - curl
+  - gnupg
+
+vector_packages_redhat:
+  - ca-certificates
+  - curl

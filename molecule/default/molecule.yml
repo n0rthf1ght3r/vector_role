@@ -1,0 +1,36 @@
+---
+driver:
+  name: docker
+  managed: true
+
+platforms:
+  - name: ubuntu
+    image: ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    tty: true
+    command: sleep infinity
+
+  - name: oraclelinux8
+    image: oraclelinux:8
+    pre_build_image: true
+    privileged: true
+    tty: true
+    command: sleep infinity
+
+provisioner:
+  name: ansible
+  playbooks:
+    prepare: prepare.yml
+    converge: converge.yml
+  env:
+    ANSIBLE_REMOTE_TMP: /tmp
+    ANSIBLE_PYTHON_INTERPRETER: auto_silent
+  inventory:
+    group_vars:
+      all:
+        ansible_become: false
+        vector_manage_service: false  # в контейнерах без systemd сервис не трогаем
+
+verifier:
+  name: ansible

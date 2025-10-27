@@ -1,0 +1,58 @@
+---
+- name: Converge RHEL-like
+  hosts: oraclelinux8
+  gather_facts: true
+  vars:
+    vector_pkg_type: "rpm"
+  tasks:
+    - name: Include role under test (RHEL-like)
+      ansible.builtin.include_role:
+        name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | default(playbook_dir ~ '/..', true) }}"
+
+    - name: Check missing prereqs on RHEL-like
+      ansible.builtin.raw: >
+        /bin/sh -lc '
+        missing="";
+        for p in ca-certificates curl shadow-utils; do
+          rpm -q "$p" >/dev/null 2>&1 || missing="$missing $p";
+        done;
+        printf "%s\n" "$missing"
+        '
+      register: prereqs_out
+      changed_when: false
+
+    - name: Install missing prereqs on RHEL-like (dnf/yum)
+      ansible.builtin.raw: >
+        /bin/sh -lc '
+        if [ -n "{{ prereqs_out.stdout | trim }}" ]; then
+          if command -v dnf >/dev/null 2>&1; then
+            dnf -y install {{ prereqs_out.stdout }};
+          elif command -v yum >/dev/null 2>&1; then
+            yum -y install {{ prereqs_out.stdout }};
+          else
+            echo "No dnf/yum found" >&2; exit 1;
+          fi
+        fi
+        '
+      when: prereqs_out.stdout | trim != ""
+      changed_when: true
+
+    - name: Enable and start Vector
+      ansible.builtin.debug:
+        msg: "Skipping service management under podman containers (no systemd)"
+      changed_when: false
+
+- name: Converge Debian-like
+  hosts: ubuntu
+  gather_facts: true
+  vars:
+    vector_pkg_type: "deb"
+  tasks:
+    - name: Include role under test (Debian-like)
+      ansible.builtin.include_role:
+        name: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | default(playbook_dir ~ '/..', true) }}"
+
+    - name: Enable and start Vector
+      ansible.builtin.debug:
+        msg: "Skipping service management under podman containers (no systemd)"
+      changed_when: false

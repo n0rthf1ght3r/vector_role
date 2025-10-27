@@ -1,0 +1,5 @@
+vector_packages_debian:
+  - curl
+
+vector_packages_redhat:
+  - curl

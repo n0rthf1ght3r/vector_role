@@ -1,0 +1,44 @@
+---
+- name: Prepare hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Read /etc/os-release
+      ansible.builtin.raw: cat /etc/os-release
+      register: osrel
+      changed_when: false
+
+    - name: Extract distro ID
+      ansible.builtin.set_fact:
+        distro_id: >-
+          {{ (osrel.stdout_lines
+              | select('match','^ID=')
+              | list | first
+              | regex_replace('^ID="?([^"]+)"?.*','\1')
+              | lower) }}
+
+    - name: Ensure /tmp exists and writable
+      ansible.builtin.raw: mkdir -p /tmp && chmod 1777 /tmp
+      changed_when: false
+
+    # Debian/Ubuntu
+    - name: Install Python3 on Debian/Ubuntu
+      ansible.builtin.raw: |
+        apt-get update -y
+        DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-apt ca-certificates curl
+      when: distro_id in ['debian','ubuntu']
+      changed_when: false
+
+    # RHEL/OracleLinux
+    - name: Install Python 3.9 on RHEL-like
+      ansible.builtin.raw: |
+        ( command -v dnf >/dev/null 2>&1 && (dnf -y module enable python39 || true) && dnf -y install python39 ca-certificates curl ) \
+        || ( command -v yum >/dev/null 2>&1 && yum -y install python39 ca-certificates curl )
+      when: distro_id in ['ol','oraclelinux','rhel','centos','rocky','almalinux']
+      changed_when: false
+
+    - name: Make python3 point to python3.9 on RHEL-like
+      ansible.builtin.raw: |
+        if [ -x /usr/bin/python3.9 ]; then ln -sfn /usr/bin/python3.9 /usr/bin/python3; fi
+      when: distro_id in ['ol','oraclelinux','rhel','centos','rocky','almalinux']
+      changed_when: false

@@ -1,0 +1,98 @@
+---
+- name: Ensure prerequisite packages are present (Debian)
+  ansible.builtin.apt:
+    name: "{{ vector_packages_debian }}"
+    update_cache: yes
+    state: present
+  when: ansible_os_family | default('') == "Debian"
+
+- name: Check missing prereqs on RHEL-like
+  ansible.builtin.raw: >
+    /bin/sh -lc '
+    missing="";
+    for p in {{ (vector_packages_redhat | default([])) | join(" ") }}; do
+      rpm -q "$p" >/dev/null 2>&1 || missing="$missing $p";
+    done;
+    printf "%s\n" "$missing"
+    '
+  register: prereqs_out
+  changed_when: false
+  when: ansible_os_family | default('') == "RedHat"
+
+- name: Install missing prereqs on RHEL-like (dnf/yum)
+  ansible.builtin.raw: >
+    /bin/sh -lc '
+    if [ -n "{{ prereqs_out.stdout | trim }}" ]; then
+      if command -v dnf >/dev/null 2>&1; then
+        dnf -y install {{ prereqs_out.stdout }};
+      elif command -v yum >/dev/null 2>&1; then
+        yum -y install {{ prereqs_out.stdout }};
+      else
+        echo "No dnf/yum found" >&2; exit 1;
+      fi
+    fi
+    '
+  when:
+    - ansible_os_family | default('') == "RedHat"
+    - prereqs_out.stdout | trim != ""
+  changed_when: true
+
+- name: Download Vector package (Debian)
+  ansible.builtin.get_url:
+    url: "{{ vector_download_deb }}"
+    dest: "/tmp/vector_{{ vector_version }}.deb"
+    mode: "0644"
+  when: vector_pkg_type == "deb"
+
+- name: Install Vector (Debian)
+  ansible.builtin.apt:
+    deb: "/tmp/vector_{{ vector_version }}.deb"
+    state: present
+  when: vector_pkg_type == "deb"
+
+- name: Download Vector package (RPM)
+  ansible.builtin.get_url:
+    url: "{{ vector_download_rpm }}"
+    dest: "/tmp/vector-{{ vector_version }}.rpm"
+    mode: "0644"
+  when: vector_pkg_type == "rpm"
+
+- name: Check Vector rpm installed (RHEL-like)
+  ansible.builtin.raw: >
+    /bin/sh -lc '
+    rpm -q vector >/dev/null 2>&1
+    '
+  register: vector_rpm_check
+  changed_when: false
+  failed_when: false
+  when: vector_pkg_type == "rpm"
+
+- name: Install Vector (RPM) via raw
+  ansible.builtin.raw: >
+    /bin/sh -lc '
+    rpm -Uvh --replacepkgs /tmp/vector-{{ vector_version }}.rpm
+    '
+  when:
+    - vector_pkg_type == "rpm"
+    - vector_rpm_check.rc | default(1) != 0
+  changed_when: true
+
+- name: Ensure config dir exists
+  ansible.builtin.file:
+    path: "{{ vector_config_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Vector config
+  ansible.builtin.template:
+    src: "vector.toml.j2"
+    dest: "{{ vector_config_path }}"
+    mode: "0644"
+  notify: Restart vector
+
+- name: Enable and start Vector
+  ansible.builtin.service:
+    name: "{{ vector_service_name }}"
+    state: started
+    enabled: yes
+  when: (vector_manage_service | default(true)) | bool

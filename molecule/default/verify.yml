@@ -1,0 +1,43 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Vector binary exists
+      ansible.builtin.stat:
+        path: /usr/bin/vector
+      register: vector_bin
+
+    - name: Assert vector binary present
+      ansible.builtin.assert:
+        that: vector_bin.stat.exists
+        fail_msg: "Vector binary not found at /usr/bin/vector"
+
+    - name: Show vector version (debug)
+      ansible.builtin.command: /usr/bin/vector --version
+      changed_when: false
+      register: vector_ver
+
+    - name: Debug version
+      ansible.builtin.debug:
+        var: vector_ver.stdout
+
+    - name: Config exists
+      ansible.builtin.stat:
+        path: /etc/vector/vector.toml
+      register: vector_cfg
+
+    - name: Assert config exists
+      ansible.builtin.assert:
+        that: vector_cfg.stat.exists
+        fail_msg: "Vector config not found at /etc/vector/vector.toml"
+
+    - name: Validate config (positional path)
+      ansible.builtin.command: /usr/bin/vector validate /etc/vector/vector.toml
+      changed_when: false
+      register: validate_out
+      failed_when: validate_out.rc != 0
+
+    - name: Show validate output
+      ansible.builtin.debug:
+        var: validate_out.stdout

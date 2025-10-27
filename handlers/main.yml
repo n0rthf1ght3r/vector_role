@@ -1,0 +1,6 @@
+---
+- name: Restart vector
+  ansible.builtin.service:
+    name: "{{ vector_service_name }}"
+    state: restarted
+  when: vector_manage_service and (ansible_service_mgr | default('')) == 'systemd'
