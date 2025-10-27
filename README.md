@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-1234
-=======
 # vector-role
 
 Ansible-роль для установки и настройки [Vector](https://vector.dev).
