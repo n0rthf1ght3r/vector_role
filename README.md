@@ -1,5 +1,11 @@
-#Вывод после выполнения molecule test -s default.png
+#Вывод после выполнения molecule test -s default
 ![Компьютер](png/1.png)
+
+#Вывод после выполнения molecule test -s podman
+![Компьютер](png/2.png)
+
+#Вывод после выполнения tox
+![Компьютер](png/3.png)
 
 # vector-role
 
