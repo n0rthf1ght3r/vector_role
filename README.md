@@ -1,3 +1,6 @@
+#Вывод после выполнения molecule test -s default.png
+![Компьютер](png/1.png)
+
 # vector-role
 
 Ansible-роль для установки и настройки [Vector](https://vector.dev).
